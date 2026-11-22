@@ -276,6 +276,7 @@
             <div id="category-name-display" style="font-size: 1.8rem; margin-bottom: 10px;">どうぶつ</div>
             <hr style="width: 80%; border: 1px solid rgba(255,255,255,0.2); margin-bottom: 10px;">
             <div id="question-counter">もんだい<br><span style="font-size: 3rem;">1 / 10</span></div>
+            <button id="btn-title" onclick="backToTitle()" style="margin-top:20px;font-size:1.3rem;padding:10px 18px;border:2px solid rgba(255,255,255,0.35);border-radius:12px;background:transparent;color:#cfcfcf;cursor:pointer;">タイトルへ</button>
         </div>
 
         <!-- 中央パネル：画像エリアを最大化 -->
@@ -304,7 +305,7 @@
     <!-- 終了画面 -->
     <div id="end-screen" class="screen">
         <h2>おつかれさまでした！</h2>
-        <p>すべての問題がしりょうしました。</p>
+        <p>すべての問題がおわりました。</p>
         <button class="btn-restart" onclick="returnToTitle()">はじめにもどる</button>
     </div>
 
@@ -368,14 +369,14 @@
                 if (callback) callback();
                 return;
             }
-            currentAudio = new Audio(path);
-            currentAudio.play().then(() => {
-                if (callback) {
-                    currentAudio.onended = callback;
-                }
-            }).catch(e => {
+            const a = new Audio(path);
+            currentAudio = a;
+            if (callback) {
+                a.onended = () => { if (currentAudio === a) callback(); };
+            }
+            a.play().catch(e => {
                 console.log("Audio play error:", e);
-                if (callback) callback();
+                if (currentAudio === a && callback) callback();
             });
         }
 
@@ -500,6 +501,14 @@
                 if (currentAudio) currentAudio.pause();
             } else {
                 btn.textContent = '一時停止';
+                // 止めていた音声を続きから再生（終わると、つぎの流れ／タイマーが始まる）
+                if (currentAudio && currentAudio.paused && !currentAudio.ended) {
+                    const a = currentAudio;
+                    a.play().catch(e => {
+                        console.log("Audio resume error:", e);
+                        if (currentAudio === a && a.onended) a.onended();
+                    });
+                }
             }
         }
 
@@ -583,8 +592,17 @@
             }
         }
 
+        // 途中でタイトルへ（職員さん用。まちがい防止に確認を出す）
+        function backToTitle() {
+            if (!confirm('はじめの画面にもどりますか？')) return;
+            returnToTitle();
+        }
+
         // はじめに戻る
         function returnToTitle() {
+            if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+            isPaused = false;
+            isAnswered = true;
             if (currentAudio) {
                 currentAudio.pause();
                 currentAudio = null;
