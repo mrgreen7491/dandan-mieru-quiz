@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>だんだん見えてくる！何でしょう？</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+        }
+        body {
+            background-color: #1a1a2e;
+            color: #ffffff;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        .screen {
+            display: none;
+            width: 100%;
+            height: 100%;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 30px;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+        .screen.active {
+            display: flex;
+        }
+
+        /* スタート画面 */
+        #start-screen h1 {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            color: #ffd700;
+            text-shadow: 2px 2px 8px rgba(0,0,0,0.7);
+            text-align: center;
+        }
+        #start-screen p {
+            font-size: 2rem;
+            margin-bottom: 40px;
+            color: #e0e0e0;
+        }
+        .category-buttons {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 30px;
+            width: 800px;
+            max-width: 90%;
+        }
+        .btn-category {
+            background: linear-gradient(135deg, #4e54c8, #8f94fb);
+            border: none;
+            border-radius: 20px;
+            color: white;
+            font-size: 2.5rem;
+            padding: 30px;
+            cursor: pointer;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+            transition: transform 0.2s, background 0.2s;
+        }
+        .btn-category:hover {
+            transform: translateY(-5px);
+            background: linear-gradient(135deg, #5c62d6, #9fa4ff);
+        }
+        .btn-category:active {
+            transform: translateY(2px);
+        }
+        .btn-category.all {
+            grid-column: span 2;
+            background: linear-gradient(135deg, #f12711, #f5af19);
+        }
+        .btn-category.all:hover {
+            background: linear-gradient(135deg, #ff3b1d, #ffbe24);
+        }
+
+        /* 問題画面（新レイアウト：3カラム構成） */
+        #game-screen {
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: center;
+            padding: 30px;
+            gap: 30px;
+        }
+
+        .side-panel {
+            width: 250px;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 20px;
+            text-align: center;
+            gap: 20px;
+        }
+
+        #left-panel {
+            font-size: 2.2rem;
+            font-weight: bold;
+            color: #ffd700;
+        }
+
+        #right-panel {
+            width: 320px;
+            justify-content: space-around;
+        }
+
+        .timer-container {
+            font-size: 1.8rem;
+            color: #e0e0e0;
+        }
+
+        .timer-display {
+            color: #ffd700;
+            font-weight: bold;
+            font-size: 6.3rem;
+            line-height: 1.1;
+            margin-top: 5px;
+            transition: color 0.3s;
+        }
+        .timer-display .unit {
+            font-size: 2.5rem;
+            font-weight: normal;
+            margin-left: 4px;
+        }
+
+        .center-panel {
+            flex-grow: 1;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        .image-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        .game-image {
+            max-height: 92vh;
+            max-width: 100%;
+            object-fit: contain;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+            transition: filter 0.5s ease-out;
+        }
+
+        .result-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 6rem;
+            font-weight: bold;
+            color: #ff3333;
+            text-shadow: 3px 3px 10px #000, -3px -3px 10px #000;
+            display: none;
+            z-index: 10;
+            background: rgba(0,0,0,0.7);
+            padding: 20px 50px;
+            border-radius: 20px;
+            border: 5px solid #ff3333;
+        }
+
+        .button-group {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            width: 100%;
+        }
+
+        .btn-action {
+            font-size: 1.8rem;
+            padding: 20px;
+            border: none;
+            border-radius: 15px;
+            cursor: pointer;
+            font-weight: bold;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            transition: transform 0.1s, background-color 0.2s;
+            width: 100%;
+            text-align: center;
+        }
+        .btn-action:active {
+            transform: scale(0.95);
+        }
+        #btn-correct {
+            background-color: #2ecc71;
+            color: white;
+            font-size: 2.2rem;
+            padding: 25px;
+        }
+        #btn-correct:hover {
+            background-color: #27ae60;
+        }
+        #btn-pause {
+            background-color: #f39c12;
+            color: white;
+        }
+        #btn-pause:hover {
+            background-color: #d68910;
+        }
+        #btn-next {
+            background-color: #3498db;
+            color: white;
+            display: none;
+        }
+        #btn-next:hover {
+            background-color: #2980b9;
+        }
+
+        /* 終了画面 */
+        #end-screen h2 {
+            font-size: 4rem;
+            margin-bottom: 30px;
+            color: #ffd700;
+        }
+        #end-screen p {
+            font-size: 2.5rem;
+            margin-bottom: 50px;
+        }
+        .btn-restart {
+            background: linear-gradient(135deg, #11998e, #38ef7d);
+            border: none;
+            border-radius: 20px;
+            color: white;
+            font-size: 2.5rem;
+            padding: 25px 60px;
+            cursor: pointer;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+        }
+        .btn-restart:hover {
+            background: linear-gradient(135deg, #0e8076, #2ebd6c);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- スタート画面 -->
+    <div id="start-screen" class="screen active">
+        <h1>だんだん見えてくる！何でしょう？</h1>
+        <p>ジャンルをえらんでください</p>
+        <div class="category-buttons">
+            <button class="btn-category" onclick="startGame('animals')">どうぶつ</button>
+            <button class="btn-category" onclick="startGame('fruits')">くだもの</button>
+            <button class="btn-category" onclick="startGame('appliances')">かでん</button>
+            <button class="btn-category all" onclick="startGame('all')">ぜんぶ</button>
+        </div>
+    </div>
+
+    <!-- 問題画面 -->
+    <div id="game-screen" class="screen">
+        <!-- 左サイドパネル：問題番号 -->
+        <div id="left-panel" class="side-panel">
+            <div style="font-size: 1.5rem; color: #aaa;">ジャンル</div>
+            <div id="category-name-display" style="font-size: 1.8rem; margin-bottom: 10px;">どうぶつ</div>
+            <hr style="width: 80%; border: 1px solid rgba(255,255,255,0.2); margin-bottom: 10px;">
+            <div id="question-counter">もんだい<br><span style="font-size: 3rem;">1 / 10</span></div>
+        </div>
+
+        <!-- 中央パネル：画像エリアを最大化 -->
+        <div class="center-panel">
+            <div class="image-container">
+                <img id="target-image" class="game-image" src="" alt="もんだい画像">
+                <div id="result-badge" class="result-overlay">せいかい！</div>
+            </div>
+        </div>
+
+        <!-- 右サイドパネル：残り時間と操作ボタン -->
+        <div id="right-panel" class="side-panel">
+            <div class="timer-container">
+                のこり時間
+                <div class="timer-display"><span id="time-left">60</span><span class="unit">びょう</span></div>
+            </div>
+
+            <div class="button-group">
+                <button id="btn-correct" class="btn-action" onclick="handleCorrect()">正解！</button>
+                <button id="btn-pause" class="btn-action" onclick="togglePause()">一時停止</button>
+                <button id="btn-next" class="btn-action" onclick="nextQuestion()">つぎへ</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 終了画面 -->
+    <div id="end-screen" class="screen">
+        <h2>おつかれさまでした！</h2>
+        <p>すべての問題がしりょうしました。</p>
+        <button class="btn-restart" onclick="returnToTitle()">はじめにもどる</button>
+    </div>
+
+    <script>
+        // データ定義
+        const dataAnimals = [
+            { name: 'inu', path: 'images/animals/inu.png', audio: 'audio/answers/inu.wav' },
+            { name: 'kirin', path: 'images/animals/kirin.png', audio: 'audio/answers/kirin.wav' },
+            { name: 'neko', path: 'images/animals/neko.png', audio: 'audio/answers/neko.wav' },
+            { name: 'panda', path: 'images/animals/panda.png', audio: 'audio/answers/panda.wav' },
+            { name: 'pengin', path: 'images/animals/pengin.png', audio: 'audio/answers/pengin.wav' },
+            { name: 'raion', path: 'images/animals/raion.png', audio: 'audio/answers/raion.wav' },
+            { name: 'saru', path: 'images/animals/saru.png', audio: 'audio/answers/saru.wav' },
+            { name: 'uma', path: 'images/animals/uma.png', audio: 'audio/answers/uma.wav' },
+            { name: 'usagi', path: 'images/animals/usagi.png', audio: 'audio/answers/usagi.wav' },
+            { name: 'zou', path: 'images/animals/zou.png', audio: 'audio/answers/zou.wav' }
+        ];
+
+        const dataFruits = [
+            { name: 'banana', path: 'images/fruits/banana.png', audio: 'audio/answers/banana.wav' },
+            { name: 'budou', path: 'images/fruits/budou.png', audio: 'audio/answers/budou.wav' },
+            { name: 'ichigo', path: 'images/fruits/ichigo.png', audio: 'audio/answers/ichigo.wav' },
+            { name: 'mikan', path: 'images/fruits/mikan.png', audio: 'audio/answers/mikan.wav' },
+            { name: 'momo', path: 'images/fruits/momo.png', audio: 'audio/answers/momo.wav' },
+            { name: 'nashi', path: 'images/fruits/nashi.png', audio: 'audio/answers/nashi.wav' },
+            { name: 'painappuru', path: 'images/fruits/painappuru.png', audio: 'audio/answers/painappuru.wav' },
+            { name: 'ringo', path: 'images/fruits/ringo.png', audio: 'audio/answers/ringo.wav' },
+            { name: 'sakuranbo', path: 'images/fruits/sakuranbo.png', audio: 'audio/answers/sakuranbo.wav' },
+            { name: 'suika', path: 'images/fruits/suika.png', audio: 'audio/answers/suika.wav' }
+        ];
+
+        const dataAppliances = [
+            { name: 'airon', path: 'images/appliances/airon.png', audio: 'audio/answers/airon.wav' },
+            { name: 'denkigama', path: 'images/appliances/denkigama.png', audio: 'audio/answers/denkigama.wav' },
+            { name: 'denki_yuwakashiki', path: 'images/appliances/denki_yuwakashiki.png', audio: 'audio/answers/denki_yuwakashiki.wav' },
+            { name: 'doraiyaa', path: 'images/appliances/doraiyaa.png', audio: 'audio/answers/doraiyaa.wav' },
+            { name: 'rajio', path: 'images/appliances/rajio.png', audio: 'audio/answers/rajio.wav' },
+            { name: 'reizouko', path: 'images/appliances/reizouko.png', audio: 'audio/answers/reizouko.wav' },
+            { name: 'senpuuki', path: 'images/appliances/senpuuki.png', audio: 'audio/answers/senpuuki.wav' },
+            { name: 'sentakuki', path: 'images/appliances/sentakuki.png', audio: 'audio/answers/sentakuki.wav' },
+            { name: 'soujiki', path: 'images/appliances/soujiki.png', audio: 'audio/answers/soujiki.wav' },
+            { name: 'terebi', path: 'images/appliances/terebi.png', audio: 'audio/answers/terebi.wav' }
+        ];
+
+        let currentCategory = '';
+        let questionList = [];
+        let currentIndex = 0;
+        let timeLeft = 60;
+        let timerInterval = null;
+        let isPaused = false;
+        let isAnswered = false;
+        let currentAudio = null;
+
+        // 音声再生ヘルパー
+        function playAudio(path, callback) {
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio = null;
+            }
+            if (!path) {
+                if (callback) callback();
+                return;
+            }
+            currentAudio = new Audio(path);
+            currentAudio.play().then(() => {
+                if (callback) {
+                    currentAudio.onended = callback;
+                }
+            }).catch(e => {
+                console.log("Audio play error:", e);
+                if (callback) callback();
+            });
+        }
+
+        // 画面切り替え
+        function showScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(screenId).classList.add('active');
+        }
+
+        // ゲーム開始
+        function startGame(category) {
+            currentCategory = category;
+            currentIndex = 0;
+            
+            let sourceArray = [];
+            let categoryNameText = '';
+            if (category === 'animals') { sourceArray = [...dataAnimals]; categoryNameText = 'どうぶつ'; }
+            else if (category === 'fruits') { sourceArray = [...dataFruits]; categoryNameText = 'くだもの'; }
+            else if (category === 'appliances') { sourceArray = [...dataAppliances]; categoryNameText = 'かでん'; }
+            else if (category === 'all') { sourceArray = [...dataAnimals, ...dataFruits, ...dataAppliances]; categoryNameText = 'ぜんぶ'; }
+
+            document.getElementById('category-name-display').textContent = categoryNameText;
+
+            // シャッフル
+            questionList = sourceArray.sort(() => Math.random() - 0.5);
+
+            // カテゴリ音声再生 -> ゲーム開始音声再生 -> 問題画面へ
+            let categoryAudioPath = '';
+            if (category === 'animals') categoryAudioPath = 'audio/categories/animals.wav';
+            else if (category === 'fruits') categoryAudioPath = 'audio/categories/fruits.wav';
+            else if (category === 'appliances') categoryAudioPath = 'audio/categories/appliances.wav';
+            
+            playAudio(categoryAudioPath, () => {
+                playAudio('audio/system/game_start.wav', () => {
+                    showScreen('game-screen');
+                    loadQuestion();
+                });
+            });
+        }
+
+        // 問題の読み込み
+        function loadQuestion() {
+            isAnswered = false;
+            isPaused = false;
+            timeLeft = 60;
+            const timerElem = document.getElementById('time-left');
+            timerElem.textContent = timeLeft;
+            timerElem.style.color = '#ffd700';
+            document.getElementById('btn-pause').textContent = '一時停止';
+            document.getElementById('btn-pause').style.display = 'block';
+            document.getElementById('btn-correct').style.display = 'block';
+            document.getElementById('btn-next').style.display = 'none';
+            document.getElementById('result-badge').style.display = 'none';
+            document.getElementById('result-badge').textContent = 'せいかい！';
+
+            const currentQ = questionList[currentIndex];
+            const imgElement = document.getElementById('target-image');
+            imgElement.src = currentQ.path;
+            
+            // 初期ぼかし (60px)
+            imgElement.style.filter = 'blur(60px)';
+
+            document.getElementById('question-counter').innerHTML = `もんだい<br><span style="font-size: 3rem;">${currentIndex + 1} / ${questionList.length}</span>`;
+
+            // 問題開始音声
+            playAudio('audio/system/question_start.wav', () => {
+                startTimer();
+            });
+        }
+
+        // タイマー開始
+        function startTimer() {
+            if (timerInterval) clearInterval(timerInterval);
+
+            timerInterval = setInterval(() => {
+                if (isPaused || isAnswered) return;
+
+                timeLeft--;
+                const timerElem = document.getElementById('time-left');
+                timerElem.textContent = timeLeft;
+                if (timeLeft <= 10) {
+                    timerElem.style.color = '#ff3333';
+                } else {
+                    timerElem.style.color = '#ffd700';
+                }
+
+                updateBlurAndAudio(timeLeft);
+
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    handleTimeUp();
+                }
+            }, 1000);
+        }
+
+        // ぼかしと音声の制御 (残り時間ベース)
+        function updateBlurAndAudio(time) {
+            const imgElement = document.getElementById('target-image');
+            
+            // 経過時間 = 60 - time
+            const elapsed = 60 - time;
+
+            // ぼかし計算 (経過時間とともに 60px から 0px へなめらかに減少)
+            const blurVal = Math.max(0, 60 * (1 - elapsed / 60));
+            imgElement.style.filter = `blur(${blurVal}px)`;
+
+            // 10秒ごとの音声
+            if (time === 50) playAudio('audio/system/10sec.wav');
+            if (time === 40) playAudio('audio/system/20sec.wav');
+            if (time === 30) playAudio('audio/system/30sec.wav');
+            if (time === 20) playAudio('audio/system/40sec.wav');
+            if (time === 10) playAudio('audio/system/50sec.wav');
+        }
+
+        // 一時停止・再開
+        function togglePause() {
+            if (isAnswered) return;
+            isPaused = !isPaused;
+            const btn = document.getElementById('btn-pause');
+            if (isPaused) {
+                btn.textContent = 'さいかい';
+                if (currentAudio) currentAudio.pause();
+            } else {
+                btn.textContent = '一時停止';
+            }
+        }
+
+        // 正解ボタン
+        function handleCorrect() {
+            if (isAnswered) return;
+            isAnswered = true;
+            clearInterval(timerInterval);
+
+            // 画像を完全に鮮明にする
+            const imgElement = document.getElementById('target-image');
+            imgElement.style.filter = 'blur(0px)';
+
+            // バッジ表示
+            const badge = document.getElementById('result-badge');
+            badge.textContent = 'せいかい！';
+            badge.style.color = '#2ecc71';
+            badge.style.borderColor = '#2ecc71';
+            badge.style.display = 'block';
+
+            // ボタン切り替え
+            document.getElementById('btn-pause').style.display = 'none';
+            document.getElementById('btn-correct').style.display = 'none';
+            document.getElementById('btn-next').style.display = 'block';
+
+            // 音声演出: correct.wav -> praise.wav -> 答えの音声
+            playAudio('audio/results/correct.wav', () => {
+                playAudio('audio/results/praise.wav', () => {
+                    const currentQ = questionList[currentIndex];
+                    playAudio(currentQ.audio);
+                });
+            });
+        }
+
+        // 時間切れ
+        function handleTimeUp() {
+            if (isAnswered) return;
+            isAnswered = true;
+
+            // 画像を完全に鮮明にする
+            const imgElement = document.getElementById('target-image');
+            imgElement.style.filter = 'blur(0px)';
+
+            // バッジ表示
+            const badge = document.getElementById('result-badge');
+            badge.textContent = 'おしまい！';
+            badge.style.color = '#e74c3c';
+            badge.style.borderColor = '#e74c3c';
+            badge.style.display = 'block';
+
+            // ボタン切り替え
+            document.getElementById('btn-pause').style.display = 'none';
+            document.getElementById('btn-correct').style.display = 'none';
+            document.getElementById('btn-next').style.display = 'block';
+
+            // 音声演出: time_up.wav -> incorrect.wav -> show_answer.wav -> answer_reveal.wav -> 答えの音声
+            playAudio('audio/system/time_up.wav', () => {
+                playAudio('audio/results/incorrect.wav', () => {
+                    playAudio('audio/results/show_answer.wav', () => {
+                        playAudio('audio/system/answer_reveal.wav', () => {
+                            const currentQ = questionList[currentIndex];
+                            playAudio(currentQ.audio);
+                        });
+                    });
+                });
+            });
+        }
+
+        // 次の問題へ
+        function nextQuestion() {
+            currentIndex++;
+            if (currentIndex >= questionList.length) {
+                // 終了画面へ
+                playAudio('audio/ending/category_end.wav', () => {
+                    playAudio('audio/ending/game_end.wav', () => {
+                        showScreen('end-screen');
+                    });
+                });
+            } else {
+                loadQuestion();
+            }
+        }
+
+        // はじめに戻る
+        function returnToTitle() {
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio = null;
+            }
+            showScreen('start-screen');
+        }
+    </script>
+</body>
+</html>
