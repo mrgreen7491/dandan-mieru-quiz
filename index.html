@@ -312,7 +312,7 @@
         <div id="right-panel" class="side-panel">
             <div class="timer-container">
                 のこり時間
-                <div class="timer-display"><span id="time-left">60</span><span class="unit">びょう</span></div>
+                <div class="timer-display"><span id="time-left">30</span><span class="unit">びょう</span></div>
             </div>
 
             <div class="button-group">
@@ -374,7 +374,9 @@
         let currentCategory = '';
         let questionList = [];
         let currentIndex = 0;
-        let timeLeft = 60;
+        // ★ 1問の制限時間（秒）。ここの数字を変えると、時間・ぼかしの変化・時間のお知らせが、まとめて変わります。
+        const GAME_SECONDS = 30;
+        let timeLeft = GAME_SECONDS;
         let timerInterval = null;
         let isPaused = false;
         let isAnswered = false;
@@ -442,7 +444,7 @@
         function loadQuestion() {
             isAnswered = false;
             isPaused = false;
-            timeLeft = 60;
+            timeLeft = GAME_SECONDS;
             const timerElem = document.getElementById('time-left');
             timerElem.textContent = timeLeft;
             timerElem.style.color = '#ffd700';
@@ -457,7 +459,7 @@
             const imgElement = document.getElementById('target-image');
             imgElement.src = currentQ.path;
             
-            // 初期ぼかし (60px)
+            // 初期ぼかし (60px。時間が短くなっても、最初の強さは同じ)
             imgElement.style.filter = 'blur(60px)';
 
             document.getElementById('question-counter').innerHTML = `もんだい<br><span style="font-size: 3rem;">${currentIndex + 1} / ${questionList.length}</span>`;
@@ -497,19 +499,17 @@
         function updateBlurAndAudio(time) {
             const imgElement = document.getElementById('target-image');
             
-            // 経過時間 = 60 - time
-            const elapsed = 60 - time;
+            // 経過時間 = 制限時間 - 残り時間
+            const elapsed = GAME_SECONDS - time;
 
             // ぼかし計算 (経過時間とともに 60px から 0px へなめらかに減少)
-            const blurVal = Math.max(0, 60 * (1 - elapsed / 60));
+            const blurVal = Math.max(0, 60 * (1 - elapsed / GAME_SECONDS));
             imgElement.style.filter = `blur(${blurVal}px)`;
 
-            // 10秒ごとの音声
-            if (time === 50) playAudio('audio/system/10sec.wav');
-            if (time === 40) playAudio('audio/system/20sec.wav');
-            if (time === 30) playAudio('audio/system/30sec.wav');
-            if (time === 20) playAudio('audio/system/40sec.wav');
-            if (time === 10) playAudio('audio/system/50sec.wav');
+            // 10秒ごとの音声（経過10秒→10sec.wav、20秒→20sec.wav …。制限時間に達する回は、時間切れの音声になるので鳴らさない）
+            [10, 20, 30, 40, 50].forEach((k) => {
+                if (k < GAME_SECONDS && elapsed === k) playAudio('audio/system/' + k + 'sec.wav');
+            });
         }
 
         // 一時停止・再開
