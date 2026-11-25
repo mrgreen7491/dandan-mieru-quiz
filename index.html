@@ -253,6 +253,27 @@
             background: linear-gradient(135deg, #0e8076, #2ebd6c);
         }
     </style>
+<style>
+/* テレビ・小さめの画面でも、上下が切れないように、大きさを画面の高さ・幅に合わせる（上限は、元の大きさ） */
+#start-screen h1{font-size:min(4rem,8.5vh);margin-bottom:2vh}
+#start-screen p{font-size:min(2rem,4vh);margin-bottom:3vh}
+.category-buttons{gap:3vh 3vw;width:min(800px,90vw)}
+.btn-category{font-size:min(2.5rem,5.2vh);padding:min(30px,3.2vh);border-radius:min(20px,2.5vh)}
+#game-screen{padding:3vh 2vw;gap:2vw}
+.side-panel{width:min(250px,20vw);padding:2vh 1vw;gap:2vh;border-radius:min(20px,2.5vh)}
+#left-panel{font-size:min(2.2rem,4.6vh)}
+#right-panel{width:min(320px,26vw)}
+.timer-container{font-size:min(1.8rem,3.6vh)}
+.timer-display{font-size:min(6.3rem,12vh)}
+.timer-display .unit{font-size:min(2.5rem,5vh)}
+.button-group{gap:min(15px,1.8vh)}
+.btn-action{font-size:min(1.8rem,3.8vh);padding:min(20px,2.4vh)}
+#btn-correct{font-size:min(2.2rem,4.6vh);padding:min(25px,3vh)}
+.result-overlay{font-size:min(6rem,12vh);padding:2vh 3vw}
+#end-screen h2{font-size:min(4rem,8.5vh);margin-bottom:3vh}
+#end-screen p{font-size:min(2.5rem,5vh);margin-bottom:4vh}
+.btn-restart{font-size:min(2.5rem,5.2vh);padding:min(25px,3vh) min(60px,5vw)}
+</style>
 </head>
 <body>
 
@@ -610,5 +631,32 @@
             showScreen('start-screen');
         }
     </script>
+
+<!-- 全画面ボタン（スタッフ用・共通部品 v1） -->
+<style>
+#btnFullscreen{position:fixed;top:1.2vh;right:1.2vw;z-index:9999;font-family:inherit;font-size:max(13px,2.4vh);line-height:1.2;padding:.7vh 1.3vw;border-radius:1.2vh;border:.3vh solid rgba(60,40,20,.35);background:rgba(255,255,255,.82);color:#4a3a2a;opacity:.8;cursor:pointer;box-shadow:none;transform:none}
+#btnFullscreen:hover,#btnFullscreen:focus-visible{opacity:1}
+</style>
+<button id="btnFullscreen" type="button" aria-label="全画面表示">⛶ 全画面</button>
+<script>
+(function(){
+  var b=document.getElementById('btnFullscreen'), de=document.documentElement;
+  var can=document.fullscreenEnabled||document.webkitFullscreenEnabled;
+  if(!can){ b.style.display='none'; return; }
+  function isFS(){ return document.fullscreenElement||document.webkitFullscreenElement; }
+  function upd(){ b.textContent=isFS()?'✕ 全画面をやめる':'⛶ 全画面'; }
+  b.addEventListener('click',function(e){
+    e.stopPropagation();
+    try{
+      if(isFS()){ (document.exitFullscreen||document.webkitExitFullscreen).call(document); }
+      else{ (de.requestFullscreen||de.webkitRequestFullscreen).call(de); }
+    }catch(err){}
+    b.blur();
+  });
+  document.addEventListener('fullscreenchange',upd);
+  document.addEventListener('webkitfullscreenchange',upd);
+  upd();
+})();
+</script>
 </body>
 </html>
