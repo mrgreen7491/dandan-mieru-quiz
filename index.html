@@ -591,14 +591,13 @@
             document.getElementById('btn-correct').style.display = 'none';
             document.getElementById('btn-next').style.display = 'block';
 
-            // 音声演出: time_up.wav -> incorrect.wav -> show_answer.wav -> answer_reveal.wav -> 答えの音声
+            // 音声演出: time_up.wav -> incorrect.wav -> show_answer.wav -> 答えの音声
+            // （answer_reveal.wav「正解はまるまるでした」は、使わないことにした：2026-11-26）
             playAudio('audio/system/time_up.wav', () => {
                 playAudio('audio/results/incorrect.wav', () => {
                     playAudio('audio/results/show_answer.wav', () => {
-                        playAudio('audio/system/answer_reveal.wav', () => {
-                            const currentQ = questionList[currentIndex];
-                            playAudio(currentQ.audio);
-                        });
+                        const currentQ = questionList[currentIndex];
+                        playAudio(currentQ.audio);
                     });
                 });
             });
