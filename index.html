@@ -279,12 +279,25 @@
 .image-container{padding-top:9vh}
 .game-image{max-height:100%;min-height:0}
 .result-overlay{top:0;left:50%;transform:translateX(-50%);font-size:min(3.4rem,5vh);line-height:1.2;padding:.8vh 2.4vw;border-width:.5vh;border-radius:2vh;white-space:nowrap;background:rgba(0,0,0,.75)}
+/* キャラクター（スタート画面だけ。ジャンル選択後の声に合わせて口が動く） */
+#start-screen .chara{display:none}
+#start-screen .smain{display:flex;flex-direction:column;align-items:center;justify-content:center}
+@media (min-aspect-ratio:1/1){
+#start-screen{flex-direction:row;gap:3vw}
+#start-screen .chara{display:block;flex:none;width:min(36vw,66vh)}
+#start-screen .chara img{display:block;width:100%;height:auto;border-radius:2vh;box-shadow:0 .8vh 2vh rgba(0,0,0,.45)}
+#start-screen .smain{width:calc(100vw - 36vw - 12vw)}
+#start-screen .smain h1{font-size:min(3.4rem,6.4vh)}
+#start-screen .smain .category-buttons{width:100%}
+}
 </style>
 </head>
 <body>
 
     <!-- スタート画面 -->
     <div id="start-screen" class="screen active">
+        <div class="chara"><img id="charaImg" src="chara_close.jpg" alt="司会者"></div>
+        <div class="smain">
         <h1>だんだん見えてくる！何でしょう？</h1>
         <p>ジャンルをえらんでください</p>
         <div class="category-buttons">
@@ -292,6 +305,7 @@
             <button class="btn-category" onclick="startGame('fruits')">くだもの</button>
             <button class="btn-category" onclick="startGame('appliances')">かでん</button>
             <button class="btn-category all" onclick="startGame('all')">ぜんぶ</button>
+        </div>
         </div>
     </div>
 
@@ -389,17 +403,55 @@
         let currentAudio = null;
 
         // 音声再生ヘルパー
-        function playAudio(path, callback) {
+        // ---- 口パク（声の大きさを測って、4枚の画像を切りかえる） ----
+        const CH = {close:'chara_close.jpg', half:'chara_half.jpg', open:'chara_open.jpg', blink:'chara_blink.jpg'};
+        Object.values(CH).forEach(src => { const i = new Image(); i.src = src; });
+        const LIP_OPEN = 140, LIP_HALF = 60;   // しきい値（声の大きさ。あとで調整できる）
+        let lipCtx = null, lipAn = null, lipTimer = null, blinkTimer = null, blinking = false, lipAudio = null;
+        function setChara(k) { const im = document.getElementById('charaImg'); if (im) im.src = CH[k]; }
+        function lipStart(a) {
+            lipStop(); lipAudio = a;
+            // 声の解析は、インターネット上（https）だけで使える。パソコン内のファイルを直接開いたときは、簡易の口パク。
+            if (!lipCtx && /^https?:$/.test(location.protocol)) {
+                try { lipCtx = new (window.AudioContext || window.webkitAudioContext)(); lipAn = lipCtx.createAnalyser(); lipAn.fftSize = 256; lipAn.smoothingTimeConstant = 0.3; lipAn.connect(lipCtx.destination); }
+                catch (e) { lipCtx = null; lipAn = null; }
+            }
+            let useAn = false;
+            if (lipAn) { try { lipCtx.createMediaElementSource(a).connect(lipAn); useAn = true; if (lipCtx.state === 'suspended') lipCtx.resume(); } catch (e) { useAn = false; } }
+            const data = useAn ? new Uint8Array(lipAn.frequencyBinCount) : null;
+            lipTimer = setInterval(() => {
+                if (blinking) return;
+                if (!lipAudio || lipAudio.paused || lipAudio.ended) { setChara('close'); return; }
+                if (!useAn) { const r = Math.random(); setChara(r > .66 ? 'open' : (r > .33 ? 'half' : 'close')); return; }
+                lipAn.getByteFrequencyData(data);
+                let sum = 0; for (let i = 0; i < 30; i++) sum += data[i];
+                const avg = sum / 30; window.__lipAvg = avg;
+                setChara(avg > LIP_OPEN ? 'open' : (avg > LIP_HALF ? 'half' : 'close'));
+            }, 90);
+            const sched = () => { blinkTimer = setTimeout(() => {
+                if (lipAudio && !lipAudio.paused && !lipAudio.ended) { blinking = true; setChara('blink'); setTimeout(() => { blinking = false; setChara('close'); }, 150); }
+                sched();
+            }, 3000 + Math.random() * 2000); };
+            sched();
+        }
+        function lipStop() {
+            clearInterval(lipTimer); clearTimeout(blinkTimer); lipTimer = null; blinkTimer = null; blinking = false; lipAudio = null;
+            setChara('close');
+        }
+
+        function playAudio(path, callback, lip) {
             if (currentAudio) {
                 currentAudio.pause();
                 currentAudio = null;
             }
+            if (!lip) lipStop();
             if (!path) {
                 if (callback) callback();
                 return;
             }
             const a = new Audio(path);
             currentAudio = a;
+            if (lip) lipStart(a);
             if (callback) {
                 a.onended = () => { if (currentAudio === a) callback(); };
             }
@@ -438,12 +490,14 @@
             else if (category === 'fruits') categoryAudioPath = 'audio/categories/fruits.wav';
             else if (category === 'appliances') categoryAudioPath = 'audio/categories/appliances.wav';
             
+            // スタート画面のキャラが、ジャンルの声と「ゲームはじめ」の声をしゃべる（口パクあり）
             playAudio(categoryAudioPath, () => {
                 playAudio('audio/system/game_start.wav', () => {
+                    lipStop();
                     showScreen('game-screen');
                     loadQuestion();
-                });
-            });
+                }, true);
+            }, true);
         }
 
         // 問題の読み込み
@@ -633,6 +687,7 @@
                 currentAudio.pause();
                 currentAudio = null;
             }
+            lipStop();
             showScreen('start-screen');
         }
     </script>
